@@ -73,9 +73,9 @@ AWARD_FIELDS = [
 ]
 
 # Airtable configuration
-AIRTABLE_API_KEY = ""  # To be set by user
-AIRTABLE_BASE_ID = ""  # To be set by user
-AIRTABLE_TABLE_NAME = "Book Awards"
+AIRTABLE_API_KEY = os.getenv('AIRTABLE_API_KEY')
+AIRTABLE_BASE_ID = os.getenv('AIRTABLE_BASE_ID')
+AIRTABLE_TABLE_NAME = os.getenv('AIRTABLE_TABLE_NAME')
 
 # Search configuration
 SEARCH_QUERIES = [
