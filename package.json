@@ -1,0 +1,19 @@
+{
+  "name": "bookawardsagent",
+  "version": "1.0.0",
+  "description": "This agent automatically searches for book awards, extracts detailed information about them, and updates an Airtable base with the collected data. It's designed to maintain a comprehensive database of book awards with all the fields specified in the provided CSV file.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "dotenv": "^16.5.0"
+  }
+}
