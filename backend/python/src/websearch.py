@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 import logging
 from typing import List, Dict, Any
 
-from config import SEARCH_QUERIES, USER_AGENT, MAX_SEARCH_RESULTS, REQUEST_DELAY
+from .config import SEARCH_QUERIES, USER_AGENT, MAX_SEARCH_RESULTS, REQUEST_DELAY
 
 # Configure logging
 logging.basicConfig(
@@ -54,7 +54,7 @@ class WebSearcher:
     
     def _perform_search(self, query: str) -> List[Dict[str, str]]:
         """
-        Perform a search using the given query.
+        Perform a search using the given query with DuckDuckGo API.
         
         Args:
             query: Search query string
@@ -62,26 +62,19 @@ class WebSearcher:
         Returns:
             List of dictionaries with search results
         """
-        # Using DuckDuckGo as it's more scraping-friendly
-        search_url = f"https://html.duckduckgo.com/html/?q={query.replace(' ', '+')}"
+        from duckduckgo_search import DDGS
         
         try:
-            response = requests.get(search_url, headers=self.headers)
-            response.raise_for_status()
+            logger.debug(f"Searching DuckDuckGo for: {query}")
             
-            soup = BeautifulSoup(response.text, 'html.parser')
-            results = []
-            
-            # Extract search results
-            for result in soup.select('.result')[:MAX_SEARCH_RESULTS]:
-                title_elem = result.select_one('.result__title')
-                url_elem = result.select_one('.result__url')
-                snippet_elem = result.select_one('.result__snippet')
-                
-                if title_elem and url_elem:
-                    title = title_elem.get_text(strip=True)
-                    url = url_elem.get_text(strip=True)
-                    snippet = snippet_elem.get_text(strip=True) if snippet_elem else ""
+            # Initialize DuckDuckGo search
+            with DDGS() as ddgs:
+                # Get search results
+                results = []
+                for result in ddgs.text(query, max_results=MAX_SEARCH_RESULTS):
+                    title = result.get('title', '')
+                    url = result.get('href', '')
+                    snippet = result.get('body', '')
                     
                     # Only include results that are likely to be book awards
                     if self._is_likely_book_award(title, snippet):
@@ -90,11 +83,13 @@ class WebSearcher:
                             'url': url,
                             'snippet': snippet
                         })
-            
-            return results
-            
+                        logger.debug(f"Added result: {title} - {url}")
+                
+                logger.info(f"Found {len(results)} valid results for query: {query}")
+                return results
+                
         except Exception as e:
-            logger.error(f"Error performing search: {e}")
+            logger.error(f"Error performing search for query '{query}': {e}", exc_info=True)
             return []
     
     def _is_likely_book_award(self, title: str, snippet: str) -> bool:

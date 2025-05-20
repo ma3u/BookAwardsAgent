@@ -9,7 +9,7 @@ import requests
 import logging
 from typing import Dict, Any, List, Optional
 
-from config import AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME
+from .config import AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME
 
 # Configure logging
 logging.basicConfig(
@@ -172,7 +172,7 @@ class AirtableUpdater:
         # If not in cache, query Airtable
         try:
             # Try to find by name
-            formula = f"LOWER({{Award Name}}) = '{award_name.lower().replace(\"'\", \"\\'\")}')"
+            formula = f'LOWER({{"Award Name"}}) = "{award_name.lower().replace("'", "''")}"'
             url = f"{self.base_url}?filterByFormula={formula}"
             response = requests.get(url, headers=self.headers)
             response.raise_for_status()
@@ -183,7 +183,7 @@ class AirtableUpdater:
                 
             # Try to find by website
             if award_website:
-                formula = f"LOWER({{Award Website}}) = '{award_website.lower().replace(\"'\", \"\\'\")}')"
+                formula = f'LOWER({{Award Website}}) = "{award_website.lower().replace("'", "''")}"'
                 url = f"{self.base_url}?filterByFormula={formula}"
                 response = requests.get(url, headers=self.headers)
                 response.raise_for_status()

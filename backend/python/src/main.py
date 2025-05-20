@@ -10,10 +10,10 @@ import logging
 import argparse
 from typing import List, Dict, Any
 
-from websearch import WebSearcher
-from extractor import DataExtractor
-from airtable_updater import AirtableUpdater
-from config import AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME
+from .websearch import WebSearcher
+from .extractor import DataExtractor
+from .airtable_updater import AirtableUpdater
+from .config import AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME
 
 # Configure logging
 logging.basicConfig(

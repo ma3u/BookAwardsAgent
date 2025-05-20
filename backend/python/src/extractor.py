@@ -11,7 +11,7 @@ import logging
 from typing import Dict, Any, Optional, List
 from urllib.parse import urljoin
 
-from config import AWARD_FIELDS, USER_AGENT, REQUEST_DELAY
+from .config import AWARD_FIELDS, USER_AGENT, REQUEST_DELAY
 
 # Configure logging
 logging.basicConfig(
@@ -86,6 +86,10 @@ class DataExtractor:
             BeautifulSoup object or None if retrieval fails
         """
         try:
+            # Add https:// if no scheme is present
+            if not url.startswith(('http://', 'https://')):
+                url = f'https://{url}'
+                
             response = requests.get(url, headers=self.headers, timeout=30)
             response.raise_for_status()
             return BeautifulSoup(response.text, 'html.parser')

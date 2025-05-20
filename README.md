@@ -9,7 +9,7 @@ BookAwardsAgent/
 ├── backend/
 │   ├── js/                 # Node.js backend
 │   │   ├── config.js       # Configuration loader
-│   │   └── test-config.js  # Configuration test
+│   │   ├── test-config.js  # Configuration test
 │   │   └── package.json    # Node.js dependencies
 │   └── python/             # Python backend
 │       ├── src/            # Python source code
@@ -80,12 +80,26 @@ AIRTABLE_TABLE_NAME=Book Awards
 
 Run the Python data processing pipeline:
 
-
 ```bash
+# From the project root
 cd backend/python
-python -m src.main
+
+# Activate the virtual environment (first time only)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install the package in development mode
+pip install -e .
+
+# Run the application
+python -m src
 ```
 
+Or use the installed script:
+
+```bash
+bookawards
+```
 
 ### Node.js Backend
 
@@ -97,13 +111,13 @@ cd backend/js
 node test-config.js
 ```
 
-
 ## Development
 
 ### Python
 
 - Virtual environment is recommended
 - Install development dependencies:
+
   ```bash
   pip install -r requirements.txt
   ```
@@ -111,6 +125,7 @@ node test-config.js
 ### Node.js
 
 - Install dependencies:
+
   ```bash
   cd backend/js
   npm install
@@ -121,6 +136,7 @@ node test-config.js
 ### Python
 
 1. Install production dependencies:
+
    ```bash
    pip install -r requirements.txt
    ```
@@ -128,6 +144,7 @@ node test-config.js
 ### Node.js
 
 1. Install production dependencies:
+
    ```bash
    cd backend/js
    npm install --production
@@ -159,7 +176,7 @@ python src/main.py --update-only --input-file book_awards_data.json
 
 ### Environment Variables
 Instead of modifying the config file, you can set environment variables:
-```
+```bash
 export AIRTABLE_API_KEY="your_api_key"
 export AIRTABLE_BASE_ID="your_base_id"
 export AIRTABLE_TABLE_NAME="Book Awards"
@@ -211,8 +228,13 @@ You can customize the agent's behavior by modifying the following files:
 - `airtable_updater.py`: Customize Airtable integration logic
 
 ## Troubleshooting
-- If the agent fails to find book awards, try modifying the search queries in `config.py`
-- If data extraction is incomplete, check the extraction patterns in `extractor.py`
+
+Common issues and solutions:
+
+- **Agent fails to find book awards**: Try modifying the search queries in `config.py`
+- **Incomplete data extraction**: Check the extraction patterns in `extractor.py`
+- **Module not found errors**: Ensure you've activated the virtual environment and installed dependencies
+- **Airtable connection issues**: Verify your API key and base ID in the `.env` file
 - For Airtable integration issues, verify your API credentials and table structure
 
 ## Limitations
