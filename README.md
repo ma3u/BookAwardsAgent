@@ -1,36 +1,37 @@
 # Book Awards Agent
 
-This agent automatically searches for book awards, extracts detailed information about them, and updates an Airtable base with the collected data. It's designed to maintain a comprehensive database of book awards.
+This is a full-stack application that automatically searches for book awards, extracts detailed information, and updates an Airtable base. It combines Python for data processing and Node.js for the web interface.
 
 ## Project Structure
 
-```
+```text
 BookAwardsAgent/
-├── src/                    # Python source code
-│   ├── config.py           # Configuration settings
-│   ├── websearch.py        # Web search functionality
-│   ├── extractor.py        # Data extraction from websites
-│   ├── airtable_updater.py # Airtable integration
-│   └── main.py            # Main coordination script
-├── tests/                  # Test files
-│   └── test_validation.py  # Validation and testing script
-├── config.js              # Node.js configuration
-├── test-config.js         # Configuration test script
+├── backend/
+│   ├── js/                 # Node.js backend
+│   │   ├── config.js       # Configuration loader
+│   │   └── test-config.js  # Configuration test
+│   │   └── package.json    # Node.js dependencies
+│   └── python/             # Python backend
+│       ├── src/            # Python source code
+│       │   ├── config.py   # Configuration settings
+│       │   ├── websearch.py
+│       │   ├── extractor.py
+│       │   ├── airtable_updater.py
+│       │   └── main.py
+│       └── requirements.txt # Python dependencies
 ├── .env.example           # Example environment variables
 ├── .gitignore            # Git ignore file
-├── package.json          # Node.js dependencies
 └── README.md             # This documentation
 ```
 
-## Setup Instructions
+## Prerequisites
 
-### Prerequisites
 - Python 3.8 or higher
 - Node.js 14.x or higher
 - An Airtable account with API access
 - Git
 
-### Installation
+## Installation
 
 1. Clone the repository:
    ```bash
@@ -40,31 +41,34 @@ BookAwardsAgent/
 
 2. Set up Python environment:
    ```bash
-   # Create and activate virtual environment (recommended)
+   # Create and activate virtual environment
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
 
    # Install Python dependencies
-   pip install -r requirements.txt  # Create this file if needed
+   cd backend/python
+   pip install -r requirements.txt
    ```
 
-3. Set up Node.js dependencies:
+3. Set up Node.js environment:
    ```bash
+   cd ../../backend/js
    npm install
    ```
 
 4. Configure environment variables:
    ```bash
-   cp .env.example .env
-   # Edit .env with your Airtable credentials
+   cp ../../.env.example ../../.env
+   # Edit ../../.env with your Airtable credentials
    ```
 
 ## Configuration
 
 ### Environment Variables
-Create a `.env` file in the root directory with the following variables:
+Create a `.env` file in the project root with these variables:
 
-```
+```env
+# Airtable Configuration
 AIRTABLE_API_KEY=your_api_key_here
 AIRTABLE_BASE_ID=your_base_id_here
 AIRTABLE_TABLE_NAME=Book Awards
@@ -72,19 +76,77 @@ AIRTABLE_TABLE_NAME=Book Awards
 
 ## Usage
 
-### Python Script
+### Python Backend
+
+Run the Python data processing pipeline:
+
+
 ```bash
-python src/main.py
+cd backend/python
+python -m src.main
 ```
 
-### Node.js Configuration Test
+
+### Node.js Backend
+
+Test the Node.js configuration:
+
+
 ```bash
+cd backend/js
 node test-config.js
-- `--airtable-base-id ID`: Airtable base ID
-- `--airtable-table-name NAME`: Airtable table name
+```
+
+
+## Development
+
+### Python
+
+- Virtual environment is recommended
+- Install development dependencies:
+  ```bash
+  pip install -r requirements.txt
+  ```
+
+### Node.js
+
+- Install dependencies:
+  ```bash
+  cd backend/js
+  npm install
+  ```
+
+## Deployment
+
+### Python
+
+1. Install production dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### Node.js
+
+1. Install production dependencies:
+   ```bash
+   cd backend/js
+   npm install --production
+   ```
+
+## License
+
+[Specify your license here]
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a new Pull Request
 
 Examples:
-```
+```bash
 # Search only without updating Airtable
 python src/main.py --search-only
 

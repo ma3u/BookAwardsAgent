@@ -1,6 +1,32 @@
 """
 Configuration settings for the Book Awards Websearch Agent.
+Loads and validates environment variables.
 """
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Required environment variables
+REQUIRED_ENV_VARS = [
+    'AIRTABLE_API_KEY',
+    'AIRTABLE_BASE_ID',
+    'AIRTABLE_TABLE_NAME'
+]
+
+# Validate required environment variables
+missing_vars = [var for var in REQUIRED_ENV_VARS if not os.getenv(var)]
+if missing_vars:
+    raise EnvironmentError(
+        f"Missing required environment variables: {', '.join(missing_vars)}"
+    )
+
+# Airtable configuration
+class AirtableConfig:
+    API_KEY = os.getenv('AIRTABLE_API_KEY')
+    BASE_ID = os.getenv('AIRTABLE_BASE_ID')
+    TABLE_NAME = os.getenv('AIRTABLE_TABLE_NAME')
 
 # Fields to extract from book award websites
 AWARD_FIELDS = [
