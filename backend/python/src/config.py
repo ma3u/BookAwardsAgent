@@ -6,7 +6,14 @@ import os
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-load_dotenv()
+import pathlib
+
+# Explicitly specify the .env path
+ENV_PATH = pathlib.Path(__file__).parent.parent.parent.parent / ".env"
+load_dotenv(dotenv_path=ENV_PATH)
+
+# Debug print to confirm loading
+print(f"[DEBUG] AIRTABLE_API_KEY loaded: {os.getenv('AIRTABLE_API_KEY')}")
 
 # Required environment variables
 REQUIRED_ENV_VARS = [
