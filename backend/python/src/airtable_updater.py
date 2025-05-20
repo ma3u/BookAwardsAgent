@@ -20,7 +20,66 @@ logger = logging.getLogger(__name__)
 
 class AirtableUpdater:
     """Class to handle Airtable updates for book award data."""
-    
+
+    # Fields that are single/multi-select in Airtable (update as needed)
+    SELECT_FIELDS = [
+        "Category",
+        "Award Status"
+    ]
+    # Fields that should be numeric (float)
+    NUMERIC_FIELDS = [
+        "Prize Amount",
+        "Application Fee"
+    ]
+
+    def __init__(self, api_key: str = None, base_id: str = None, table_name: str = None):
+        """
+        Initialize the AirtableUpdater with API credentials.
+        
+        Args:
+            api_key: Airtable API key (defaults to config value)
+            base_id: Airtable base ID (defaults to config value)
+            table_name: Airtable table name (defaults to config value)
+        """
+        self.api_key = api_key or AIRTABLE_API_KEY
+        self.base_id = base_id or AIRTABLE_BASE_ID
+        self.table_name = table_name or AIRTABLE_TABLE_NAME
+        
+        # Validate credentials
+        if not self.api_key or not self.base_id or not self.table_name:
+            logger.warning("Airtable credentials not fully configured")
+            
+        self.headers = {
+            'Authorization': f'Bearer {self.api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        self.base_url = f'https://api.airtable.com/v0/{self.base_id}/{self.table_name}'
+        self.existing_records = {}  # Cache for existing records
+        self.select_options_cache = {}  # Cache for select field options
+
+    def _fetch_select_options(self):
+        """
+        Fetch and cache select options for relevant fields from Airtable.
+        """
+        url = f"https://api.airtable.com/v0/meta/bases/{self.base_id}/tables"
+        try:
+            response = requests.get(url, headers=self.headers)
+            response.raise_for_status()
+            tables = response.json().get('tables', [])
+            for table in tables:
+                if table['name'] == self.table_name:
+                    for field in table['fields']:
+                        if field['name'] in self.SELECT_FIELDS and field['type'] == 'singleSelect':
+                            self.select_options_cache[field['name']] = [opt['name'] for opt in field['options']['choices']]
+        except Exception as e:
+            logger.error(f"Failed to fetch select options: {e}")
+
+    def _get_select_options(self, field_name):
+        if field_name not in self.select_options_cache:
+            self._fetch_select_options()
+        return self.select_options_cache.get(field_name, [])
+
     def __init__(self, api_key: str = None, base_id: str = None, table_name: str = None):
         """
         Initialize the AirtableUpdater with API credentials.
@@ -216,10 +275,13 @@ class AirtableUpdater:
             payload = {
                 "fields": fields
             }
-            
+            logger.debug(f"Airtable payload for create: {payload}")
             response = requests.post(self.base_url, headers=self.headers, json=payload)
-            response.raise_for_status()
-            
+            try:
+                response.raise_for_status()
+            except Exception as e:
+                logger.error(f"Airtable create error response: {response.text}")
+                raise
             # Update cache with new record
             new_record = response.json()
             record_id = new_record.get('id')
@@ -258,11 +320,14 @@ class AirtableUpdater:
             payload = {
                 "fields": fields
             }
-            
+            logger.debug(f"Airtable payload for update: {payload}")
             url = f"{self.base_url}/{record_id}"
             response = requests.patch(url, headers=self.headers, json=payload)
-            response.raise_for_status()
-            
+            try:
+                response.raise_for_status()
+            except Exception as e:
+                logger.error(f"Airtable update error response: {response.text}")
+                raise
             logger.info(f"Updated record for {award_data.get('Award Name', 'Unknown')}")
             return True
             
@@ -293,13 +358,30 @@ class AirtableUpdater:
             # Skip empty values
             if not value:
                 continue
-                
             # Convert boolean fields
             if key in boolean_fields:
                 fields[key] = value.lower() == "yes"
+            # Validate select fields
+            elif key in self.SELECT_FIELDS:
+                allowed_options = self._get_select_options(key)
+                if value in allowed_options:
+                    fields[key] = value
+                elif allowed_options:
+                    # Use first allowed option as fallback
+                    fields[key] = allowed_options[0]
+                else:
+                    continue  # Skip if no allowed options
+            # Format numeric fields
+            elif key in self.NUMERIC_FIELDS:
+                import re
+                try:
+                    numeric = float(re.sub(r'[^\d.]', '', str(value)))
+                    fields[key] = numeric
+                except Exception:
+                    fields[key] = None
             else:
                 fields[key] = value
-                
+
         # Set data completeness and verification date
         fields["Data Completeness"] = self._calculate_completeness(award_data)
         fields["Last Verification Date"] = time.strftime("%Y-%m-%d")
