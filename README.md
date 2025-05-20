@@ -4,29 +4,60 @@ A comprehensive tool for discovering, tracking, and managing book awards. The ap
 
 ## Table of Contents
 
-- [Key Features](#key-features)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [For Users](#for-users)
-  - [Getting Started](#getting-started)
-  - [Python Backend Usage](#python-backend-usage)
-  - [Node.js Backend](#nodejs-backend)
-- [For Developers](#for-developers)
-  - [Project Structure](#project-structure)
-  - [Core Components](#core-components)
-  - [Development Setup](#development-setup)
-  - [Extending the Application](#extending-the-application)
-- [Deployment](#deployment)
-- [License](#license)
-- [Contributing](#contributing)
-- [Examples](#examples)
-- [Data Model](#data-model)
-- [Testing and Validation](#testing-and-validation)
-- [Customization](#customization)
-- [Troubleshooting](#troubleshooting)
-- [Getting Help](#getting-help)
-- [Limitations](#limitations)
+- [Book Awards Agent](#book-awards-agent)
+  - [Table of Contents](#table-of-contents)
+  - [Key Features](#key-features)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Configuration](#configuration)
+    - [Environment Variables](#environment-variables)
+  - [For Users](#for-users)
+    - [Getting Started](#getting-started)
+    - [Python Backend Usage](#python-backend-usage)
+    - [Input File Formats](#input-file-formats)
+      - [1. URL List (Plain Text)](#1-url-list-plain-text)
+      - [2. Award Data (JSON)](#2-award-data-json)
+    - [Choosing the Input File Format](#choosing-the-input-file-format)
+    - [Running with an Input File](#running-with-an-input-file)
+    - [Node.js Backend](#nodejs-backend)
+  - [For Developers](#for-developers)
+    - [Project Structure](#project-structure)
+    - [Core Components](#core-components)
+      - [1. Web Search Module (`websearch.py`)](#1-web-search-module-websearchpy)
+      - [2. Data Extractor (`extractor.py`)](#2-data-extractor-extractorpy)
+      - [3. Airtable Updater (`airtable_updater.py`)](#3-airtable-updater-airtable_updaterpy)
+    - [Development Setup](#development-setup)
+      - [Python Environment](#python-environment)
+      - [Node.js Environment](#nodejs-environment)
+    - [Extending the Application](#extending-the-application)
+  - [Deployment](#deployment)
+    - [Python](#python)
+    - [Node.js](#nodejs)
+  - [License](#license)
+  - [Contributing](#contributing)
+    - [Development Guidelines](#development-guidelines)
+  - [Examples](#examples)
+    - [Basic Usage](#basic-usage)
+    - [Advanced Scenarios](#advanced-scenarios)
+    - [Environment Configuration](#environment-configuration)
+    - [Running in Production](#running-in-production)
+  - [Data Model](#data-model)
+    - [Core Information](#core-information)
+    - [Submission Details](#submission-details)
+    - [Prizes \& Recognition](#prizes--recognition)
+    - [Contact Information](#contact-information)
+    - [Technical Metadata](#technical-metadata)
+  - [Testing and Validation](#testing-and-validation)
+  - [Customization](#customization)
+  - [Troubleshooting](#troubleshooting)
+    - [Failed Airtable Requests \& SQL Logging](#failed-airtable-requests--sql-logging)
+      - [Example SQL Output](#example-sql-output)
+      - [How to Re-run or Manipulate Failed SQL](#how-to-re-run-or-manipulate-failed-sql)
+        - [Data Manipulation Example](#data-manipulation-example)
+        - [Using Data in Airtable](#using-data-in-airtable)
+    - [Common Issues](#common-issues)
+    - [Getting Help](#getting-help)
+  - [Limitations](#limitations)
 
 ## Key Features
 
@@ -98,6 +129,77 @@ AIRTABLE_TABLE_NAME=Book Awards
 3. **Run the Application**: Use the Python backend to start collecting award data
 
 ### Python Backend Usage
+
+### Input File Formats
+
+The Python backend supports two types of input files via the `--input-file` argument:
+
+#### 1. URL List (Plain Text)
+- **Use with:** Standard processing (`python -m src.main --input-file backend/input_template.txt`)
+- **Format:** Each line contains a single award URL. Blank lines and lines starting with `#` are ignored.
+- **Template:** See [`backend/input_template.txt`](backend/input_template.txt)
+- **Status Tracking:**
+  - Each URL line ends with a status comment: `# pending`, `# completed`, or `# failed`.
+  - The workflow automatically updates the status after each attempt:
+    - `# completed` if processed successfully
+    - `# failed` if extraction or update fails
+    - `# pending` for unprocessed URLs
+  - The file is updated in-place, so you can monitor progress or resume processing at any time.
+- **Usage Example:**
+  ```sh
+  # From the backend/python directory:
+  python -m src.main --input-file ../input_template.txt
+  ```
+- **Example Entry:**
+  ```
+  https://www.bookerprizes.com/  # pending
+  ```
+
+#### 2. Award Data (JSON)
+- **Use with:** Update-only mode (`python -m src.main --update-only --input-file ../book_awards_data.json`)
+- **Format:** A JSON file containing a list of award data dictionaries. Each dictionary should match the expected Airtable schema.
+- **Usage Example:**
+  ```sh
+  # From the backend/python directory:
+  python -m src.main --update-only --input-file ../book_awards_data.json
+  ```
+- **Example:**
+  ```json
+  [
+    {
+      "Award Name": "Example Award",
+      "Award Website": "https://example.com/award1",
+      "Category": "Fiction",
+      "Deadline": "2025-06-30",
+      "Eligibility": "Open to all authors"
+      // ...other fields as required
+    },
+    {
+      "Award Name": "Second Award",
+      "Award Website": "https://example.com/award2"
+      // ...
+    }
+  ]
+  ```
+
+### Choosing the Input File Format
+- Use the plain text URL list for discovering and extracting new awards.
+- Use the JSON format for updating Airtable from pre-extracted or manually curated data.
+
+### Running with an Input File
+- **Process URLs:**
+
+  ```bash
+  python -m src.main --input-file backend/input_template.txt
+  ```
+
+- **Update from Data File:**
+
+  ```bash
+  python -m src.main --update-only --input-file ../book_awards_data.json
+  ```
+
+See the template in `backend/input_template.txt` for the plain text format.
 
 The Python backend provides the core functionality for searching and processing book awards:
 

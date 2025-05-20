@@ -131,42 +131,70 @@ class BookAwardsAgent:
         
         # Read URLs from file
         with open(input_file, 'r') as f:
-            urls = [line.strip() for line in f if line.strip()]
-            
+            raw_lines = f.readlines()
+        # Only process lines that are not comments or blank
+        urls = []
+        for line in raw_lines:
+            stripped = line.strip()
+            if not stripped or stripped.startswith('#'):
+                continue
+            # Remove any trailing status comment
+            url = stripped.split('#')[0].strip()
+            if url:
+                urls.append(url)
         if not urls:
             logger.warning("No URLs found in input file")
             return
-            
         logger.info(f"Found {len(urls)} URLs to process")
-        
         # Process each URL
         all_awards_data = []
-        
-        for url in urls:
+        for idx, url in enumerate(urls):
             logger.info(f"Processing {url}")
-            
-            # Extract data from the award website
-            award_data = self.extractor.extract_award_data(url)
-            
-            # Save the data
-            all_awards_data.append(award_data)
-            
-            # Save progress to file
-            self._save_progress(all_awards_data)
-            
-            # Update Airtable if not in search-only mode
-            if not search_only:
-                self.airtable_updater.update_airtable(award_data)
-                
+            status = "completed"
+            try:
+                # Extract data from the award website
+                award_data = self.extractor.extract_award_data(url)
+                # Save the data
+                all_awards_data.append(award_data)
+                # Save progress to file
+                self._save_progress(all_awards_data)
+                # Update Airtable if not in search-only mode
+                if not search_only:
+                    self.airtable_updater.update_airtable(award_data)
+            except Exception as e:
+                logger.error(f"Failed to process {url}: {e}")
+                status = "failed"
+            # Update status in input file
+            self._update_url_status_in_file(input_file, url, status)
             # Avoid rate limiting
             time.sleep(2)
-            
-        # Final update to Airtable in batch if not in search-only mode
-        if not search_only and all_awards_data:
-            results = self.airtable_updater.update_multiple_awards(all_awards_data)
-            logger.info(f"Airtable update results: {results}")
-            
-        logger.info("URL processing complete")
+
+    def _update_url_status_in_file(self, input_file, url, status):
+        """
+        Update the status comment for a URL in the input file.
+        """
+        try:
+            with open(input_file, 'r') as f:
+                lines = f.readlines()
+            updated_lines = []
+            for line in lines:
+                stripped = line.strip()
+                if stripped.startswith('#') or not stripped:
+                    updated_lines.append(line)
+                    continue
+                # Remove any trailing status comment for comparison
+                line_url = stripped.split('#')[0].strip()
+                if line_url == url:
+                    # Remove any existing status comment
+                    base = line_url
+                    updated_lines.append(f"{base}  # {status}\n")
+                else:
+                    updated_lines.append(line)
+            with open(input_file, 'w') as f:
+                f.writelines(updated_lines)
+        except Exception as e:
+            logger.error(f"Error updating status for {url} in {input_file}: {e}")
+
     
     def _update_from_file(self, input_file):
         """

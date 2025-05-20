@@ -44,7 +44,7 @@ class WebSearcher:
             logger.info(f"Searching for: {query}")
             results = self._perform_search(query)
             all_results.extend(results)
-            time.sleep(REQUEST_DELAY)  # Avoid rate limiting
+            time.sleep(max(REQUEST_DELAY, 5))  # Increased delay to avoid rate limiting
             
         # Remove duplicates based on URL
         unique_results = self._remove_duplicates(all_results)
@@ -53,6 +53,44 @@ class WebSearcher:
         return unique_results
     
     def _perform_search(self, query: str) -> List[Dict[str, str]]:
+        """
+        Perform a search using the given query with DuckDuckGo API, with retry/backoff on rate limit.
+        Args:
+            query: Search query string
+        Returns:
+            List of dictionaries with search results
+        """
+        from duckduckgo_search import DDGS
+        from duckduckgo_search.exceptions import DuckDuckGoSearchException
+        max_attempts = 4
+        base_delay = 5
+        for attempt in range(max_attempts):
+            try:
+                logger.debug(f"Searching DuckDuckGo for: {query} (attempt {attempt + 1})")
+                with DDGS() as ddgs:
+                    results = []
+                    for result in ddgs.text(query, max_results=MAX_SEARCH_RESULTS):
+                        title = result.get('title', '')
+                        url = result.get('href', '')
+                        snippet = result.get('body', '')
+                        if self._is_likely_book_award(title, snippet):
+                            results.append({
+                                'title': title,
+                                'url': url,
+                                'snippet': snippet
+                            })
+                            logger.debug(f"Added result: {title} - {url}")
+                    logger.info(f"Found {len(results)} valid results for query: {query}")
+                    return results
+            except DuckDuckGoSearchException as e:
+                logger.warning(f"DuckDuckGo rate limit or error: {e}. Retrying after backoff.")
+                time.sleep(base_delay * (2 ** attempt))
+            except Exception as e:
+                logger.error(f"Error performing search for query '{query}': {e}", exc_info=True)
+                break
+        logger.error(f"Failed to retrieve results for query '{query}' after {max_attempts} attempts.")
+        return []
+
         """
         Perform a search using the given query with DuckDuckGo API.
         

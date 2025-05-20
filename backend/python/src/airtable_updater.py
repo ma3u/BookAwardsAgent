@@ -213,6 +213,20 @@ class AirtableUpdater:
         except Exception as e:
             logger.error(f"Error loading existing records: {e}")
     
+    def _create_record(self, award_data: Dict[str, Any]) -> bool:
+        """
+        Create a new record in Airtable.
+        """
+        fields = self._prepare_fields(award_data)
+        try:
+            url = self.base_url
+            response = requests.post(url, headers=self.headers, json={'fields': fields})
+            response.raise_for_status()
+            return True
+        except Exception as e:
+            logger.error(f"Error creating record: {e}")
+            return False
+
     def _find_existing_record(self, award_name: str, award_website: str) -> Optional[str]:
         """
         Find an existing record by award name or website.
@@ -293,32 +307,8 @@ def _prepare_fields(self, award_data: Dict[str, Any]) -> Dict[str, Any]:
                 fields[key] = numeric
             except Exception:
                 fields[key] = None
-        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
-        sql_file = os.path.join(project_root, 'failed_airtable_requests.sql')
-        table_name = 'book_awards_failed'
-        # Write schema if file does not exist
-        if not os.path.exists(sql_file):
-            with open(sql_file, 'w', encoding='utf-8') as f:
-                # Infer SQL types
-                f.write(f"-- SQL schema for failed Airtable requests\n")
-                f.write(f"CREATE TABLE IF NOT EXISTS {table_name} (\n")
-                for k, v in fields.items():
-                    if isinstance(v, (int, float)):
-                        sql_type = 'FLOAT'
-                    else:
-                        sql_type = 'TEXT'
-                    f.write(f"    `{k}` {sql_type},\n")
-                f.write("    error TEXT\n);")
-                f.write("\n\n")
-        # Write failed request as INSERT
-        columns = ', '.join(f'`{k}`' for k in fields.keys()) + ', error'
-        values = ', '.join(self._sql_quote(v) for v in fields.values()) + f', {self._sql_quote(error_msg)}'
-        insert = f"INSERT INTO {table_name} ({columns}) VALUES ({values});\n"
-        with open(sql_file, 'a', encoding='utf-8') as f:
-            f.write(f"-- {op_type.upper()} failed\n")
-            f.write(insert)
-        # Log info about file location
-        logger.info(f"[SQL LOG] Failed Airtable request written to: {os.path.abspath(sql_file)}")
+        # End of main logic for _prepare_fields
+        return fields
 
     def _sql_quote(self, value):
         if value is None:
@@ -328,7 +318,6 @@ def _prepare_fields(self, award_data: Dict[str, Any]) -> Dict[str, Any]:
         # Escape single quotes for SQL
         return "'" + str(value).replace("'", "''") + "'"
 
-    
     def _calculate_completeness(self, award_data: Dict[str, Any]) -> str:
         """
         Calculate data completeness percentage.
