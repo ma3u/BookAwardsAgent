@@ -8,6 +8,7 @@ import time
 import requests
 import logging
 from typing import Dict, Any, List, Optional
+import json
 
 from .config import AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME
 
@@ -56,7 +57,9 @@ class AirtableUpdater:
         
         self.base_url = f'https://api.airtable.com/v0/{self.base_id}/{self.table_name}'
         self.existing_records = {}  # Cache for existing records
-        self.select_options_cache = {}  # Cache for select field options
+        # Always initialize select_options_cache, even if super().__init__ is called
+        self.select_options_cache = getattr(self, 'select_options_cache', {})
+
 
     def _fetch_select_options(self):
         """
@@ -239,172 +242,107 @@ class AirtableUpdater:
             records = response.json().get('records', [])
             if records:
                 return records[0]['id']
-                
-            # Try to find by website
-            if award_website:
-                formula = f'LOWER({{Award Website}}) = "{award_website.lower().replace("'", "''")}"'
-                url = f"{self.base_url}?filterByFormula={formula}"
-                response = requests.get(url, headers=self.headers)
-                response.raise_for_status()
-                
-                records = response.json().get('records', [])
-                if records:
-                    return records[0]['id']
-                    
-            return None
-            
         except Exception as e:
             logger.error(f"Error finding existing record: {e}")
-            return None
-    
-    def _create_record(self, award_data: Dict[str, Any]) -> bool:
-        """
-        Create a new record in Airtable.
-        
-        Args:
-            award_data: Dictionary containing award data
-            
-        Returns:
-            Boolean indicating success
-        """
-        try:
-            # Prepare data for Airtable
-            fields = self._prepare_fields(award_data)
-            
-            # Create record
-            payload = {
-                "fields": fields
-            }
-            logger.debug(f"Airtable payload for create: {payload}")
-            response = requests.post(self.base_url, headers=self.headers, json=payload)
-            try:
-                response.raise_for_status()
-            except Exception as e:
-                logger.error(f"Airtable create error response: {response.text}")
-                raise
-            # Update cache with new record
-            new_record = response.json()
-            record_id = new_record.get('id')
-            if record_id:
-                name = award_data.get('Award Name', '')
-                website = award_data.get('Award Website', '')
-                
-                if name:
-                    self.existing_records[name.lower()] = record_id
-                if website:
-                    self.existing_records[website.lower()] = record_id
-                    
-            logger.info(f"Created new record for {award_data.get('Award Name', 'Unknown')}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error creating record: {e}")
-            return False
-    
-    def _update_record(self, record_id: str, award_data: Dict[str, Any]) -> bool:
-        """
-        Update an existing record in Airtable.
-        
-        Args:
-            record_id: ID of the record to update
-            award_data: Dictionary containing award data
-            
-        Returns:
-            Boolean indicating success
-        """
-        try:
-            # Prepare data for Airtable
-            fields = self._prepare_fields(award_data)
-            
-            # Update record
-            payload = {
-                "fields": fields
-            }
-            logger.debug(f"Airtable payload for update: {payload}")
-            url = f"{self.base_url}/{record_id}"
-            response = requests.patch(url, headers=self.headers, json=payload)
-            try:
-                response.raise_for_status()
-            except Exception as e:
-                logger.error(f"Airtable update error response: {response.text}")
-                raise
-            logger.info(f"Updated record for {award_data.get('Award Name', 'Unknown')}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error updating record: {e}")
-            return False
-    
-    def _prepare_fields(self, award_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Prepare award data for Airtable fields format.
-        
-        Args:
-            award_data: Dictionary containing award data
-            
-        Returns:
-            Dictionary formatted for Airtable fields
-        """
-        # Convert Yes/No string values to boolean
-        boolean_fields = [
-            "ISBN Required", "Accepts Series", "Accepts Anthologies", 
-            "Accepts Debut Authors", "Evaluates Covers", "Evaluates Illustrations", 
-            "Evaluates Interior Design", "In-Person Celebration"
-        ]
-        
-        fields = {}
-        
-        for key, value in award_data.items():
-            # Skip empty values
-            if not value:
-                continue
-            # Convert boolean fields
-            if key in boolean_fields:
-                fields[key] = value.lower() == "yes"
-            # Validate select fields
-            elif key in self.SELECT_FIELDS:
-                allowed_options = self._get_select_options(key)
-                if value in allowed_options:
-                    fields[key] = value
-                elif allowed_options:
-                    # Use first allowed option as fallback
-                    fields[key] = allowed_options[0]
-                else:
-                    continue  # Skip if no allowed options
-            # Format numeric fields
-            elif key in self.NUMERIC_FIELDS:
-                import re
-                try:
-                    numeric = float(re.sub(r'[^\d.]', '', str(value)))
-                    fields[key] = numeric
-                except Exception:
-                    fields[key] = None
-            else:
-                fields[key] = value
+        return None
 
-        # Set data completeness and verification date
-        fields["Data Completeness"] = self._calculate_completeness(award_data)
-        fields["Last Verification Date"] = time.strftime("%Y-%m-%d")
-        
-        return fields
+def _update_record(self, record_id: str, award_data: Dict[str, Any]) -> bool:
+    """
+    Update an existing record in Airtable.
+    """
+    fields = self._prepare_fields(award_data)
+    try:
+        url = f"{self.base_url}/{record_id}"
+        response = requests.patch(url, headers=self.headers, json={'fields': fields})
+        response.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error(f"Error updating record {record_id}: {e}")
+        return False
+
+def _prepare_fields(self, award_data: Dict[str, Any]) -> Dict[str, Any]:
+    # Convert Yes/No string values to boolean
+    boolean_fields = [
+        "ISBN Required", "Accepts Series", "Accepts Anthologies",
+        "Accepts Debut Authors", "Evaluates Covers", "Evaluates Illustrations",
+        "Evaluates Interior Design", "In-Person Celebration"
+    ]
+    fields = {}
+    for key, value in award_data.items():
+        # Skip empty values
+        if not value:
+            continue
+        # Convert boolean fields
+        if key in boolean_fields:
+            fields[key] = value.lower() == "yes"
+        # Validate select fields
+        elif key in self.SELECT_FIELDS:
+            allowed_options = self._get_select_options(key)
+            if value in allowed_options:
+                fields[key] = value
+            elif allowed_options:
+                # Use first allowed option as fallback
+                fields[key] = allowed_options[0]
+            else:
+                continue  # Skip if no allowed options
+        # Format numeric fields
+        elif key in self.NUMERIC_FIELDS:
+            import re
+            try:
+                numeric = float(re.sub(r'[^\d.]', '', str(value)))
+                fields[key] = numeric
+            except Exception:
+                fields[key] = None
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
+        sql_file = os.path.join(project_root, 'failed_airtable_requests.sql')
+        table_name = 'book_awards_failed'
+        # Write schema if file does not exist
+        if not os.path.exists(sql_file):
+            with open(sql_file, 'w', encoding='utf-8') as f:
+                # Infer SQL types
+                f.write(f"-- SQL schema for failed Airtable requests\n")
+                f.write(f"CREATE TABLE IF NOT EXISTS {table_name} (\n")
+                for k, v in fields.items():
+                    if isinstance(v, (int, float)):
+                        sql_type = 'FLOAT'
+                    else:
+                        sql_type = 'TEXT'
+                    f.write(f"    `{k}` {sql_type},\n")
+                f.write("    error TEXT\n);")
+                f.write("\n\n")
+        # Write failed request as INSERT
+        columns = ', '.join(f'`{k}`' for k in fields.keys()) + ', error'
+        values = ', '.join(self._sql_quote(v) for v in fields.values()) + f', {self._sql_quote(error_msg)}'
+        insert = f"INSERT INTO {table_name} ({columns}) VALUES ({values});\n"
+        with open(sql_file, 'a', encoding='utf-8') as f:
+            f.write(f"-- {op_type.upper()} failed\n")
+            f.write(insert)
+        # Log info about file location
+        logger.info(f"[SQL LOG] Failed Airtable request written to: {os.path.abspath(sql_file)}")
+
+    def _sql_quote(self, value):
+        if value is None:
+            return 'NULL'
+        if isinstance(value, (int, float)):
+            return str(value)
+        # Escape single quotes for SQL
+        return "'" + str(value).replace("'", "''") + "'"
+
     
     def _calculate_completeness(self, award_data: Dict[str, Any]) -> str:
         """
         Calculate data completeness percentage.
-        
+
         Args:
             award_data: Dictionary containing award data
-            
         Returns:
             String representation of completeness (e.g., "75%")
         """
-        # Define essential fields
         essential_fields = [
             "Award Name", "Category", "Entry Deadline", "Eligibility Criteria",
-            "Application Procedures", "Award Website", "Prize Amount", 
+            "Application Procedures", "Award Website", "Prize Amount",
             "Application Fee", "Award Status"
         ]
-        
         # Count filled essential fields
         filled_essential = sum(1 for field in essential_fields if award_data.get(field))
         essential_completeness = filled_essential / len(essential_fields)

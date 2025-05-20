@@ -364,6 +364,8 @@ For production use, consider:
 
 ## Data Model
 
+> **Note:** If any data cannot be written to Airtable due to permissions or schema mismatches, the failed request (and the SQL schema for the attempted fields) will be logged in `failed_airtable_requests.sql` in the project root. See [Troubleshooting](#troubleshooting) for details, including how to re-run or manipulate these statements in SQL.
+
 The application collects and manages the following information for each book award:
 
 ### Core Information
@@ -372,6 +374,7 @@ The application collects and manages the following information for each book awa
 - **Category**: Type of award (Fiction, Non-fiction, etc.)
 - **Award Status**: Current status (Open, Closed, Upcoming)
 - **Award Website**: Official URL
+- **Vetting Notes**: Data provenance or vetting status. By default, all records imported by this agent are marked as `imported by Web Scraper` to distinguish them from manually entered or externally sourced records.
 - **Awarding Organization**: Organization that presents the award
 
 ### Submission Details
@@ -431,6 +434,64 @@ You can customize the agent's behavior by modifying the following files:
 - `airtable_updater.py`: Customize Airtable integration logic
 
 ## Troubleshooting
+
+### Failed Airtable Requests & SQL Logging
+
+If an Airtable insert or update fails (e.g., due to permissions or schema issues), the Book Awards Agent will log the failed request as a SQL statement in:
+
+```text
+failed_airtable_requests.sql
+```
+
+This file is always written to the project root directory (e.g. `/Users/ma3u/projects/BookAwardsAgent/failed_airtable_requests.sql`).
+
+- **Schema**: The file begins with a `CREATE TABLE IF NOT EXISTS` statement matching the fields attempted in the failed request.
+- **Failed Requests**: Each failed request is appended as an `INSERT INTO ...` statement, with all attempted field values and the error message.
+- **Log Info**: Every time a failed request is logged, an info message with the absolute file path is written to the main log output.
+
+#### Example SQL Output
+
+```sql
+-- SQL schema for failed Airtable requests
+CREATE TABLE IF NOT EXISTS book_awards_failed (
+    `Award Name` TEXT,
+    `Award Website` TEXT,
+    `Category` TEXT,
+    `Prize Amount` FLOAT,
+    error TEXT
+);
+
+-- CREATE failed
+INSERT INTO book_awards_failed (`Award Name`, `Award Website`, `Category`, `Prize Amount`, error)
+VALUES ('National Book Award', 'https://www.nationalbook.org', 'Fiction', 5000, 'Insufficient permissions to create new select option "Incomplete"');
+```
+
+#### How to Re-run or Manipulate Failed SQL
+
+1. **Copy the schema and failed INSERT statements** from `failed_airtable_requests.sql`.
+2. **Paste them into your SQL environment** (e.g., Airflow SQL Explorer, SQLite, or any compatible SQL database).
+3. **Run the statements** to recreate the failed records for further analysis, troubleshooting, or data migration.
+
+##### Data Manipulation Example
+You can use standard SQL to update, filter, or export the failed data. For example:
+
+```sql
+-- Find all failures due to select option issues
+SELECT * FROM book_awards_failed WHERE error LIKE '%select option%';
+
+-- Export all fields except the error column
+SELECT `Award Name`, `Award Website`, `Category`, `Prize Amount` FROM book_awards_failed;
+```
+
+##### Using Data in Airtable
+- Airtable itself does not support direct SQL imports, but you can:
+  - Export the data from your SQL environment as CSV.
+  - Import the CSV into Airtable using the "CSV Import" app or manual upload.
+  - Use the error column to filter or clean data before re-import.
+
+**Tip:** Use your SQL environment to fix or enrich the data before re-attempting the upload to Airtable.
+
+---
 
 ### Common Issues
 
