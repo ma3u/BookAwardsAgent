@@ -150,28 +150,43 @@ class BookAwardsAgent:
         all_awards_data = []
         for idx, url in enumerate(urls):
             logger.info(f"Processing {url}")
-            status = "completed"
+            fail_reason = None
             try:
-                # Extract data from the award website
-                award_data = self.extractor.extract_award_data(url)
+                # Extract data from the award website, capturing reason if failed
+                award_data, fail_reason = self.extractor.extract_award_data_with_reason(url)
+                if award_data is None:
+                    reason_str = f"failed: {fail_reason}" if fail_reason else "failed"
+                    logger.error(f"Extraction failed for {url}. Marking as {reason_str} in template.")
+                    self._update_url_status_in_file(input_file, url, reason_str)
+                    continue
                 # Save the data
                 all_awards_data.append(award_data)
                 # Save progress to file
                 self._save_progress(all_awards_data)
+                # Set status to json-complete
+                self._update_url_status_in_file(input_file, url, 'json-complete')
                 # Update Airtable if not in search-only mode
                 if not search_only:
-                    self.airtable_updater.update_airtable(award_data)
+                    airtable_success = self.airtable_updater.update_airtable(award_data)
+                    if airtable_success:
+                        # Set status to both
+                        self._update_url_status_in_file(input_file, url, 'json-complete, airtable-complete')
             except Exception as e:
-                logger.error(f"Failed to process {url}: {e}")
-                status = "failed"
-            # Update status in input file
-            self._update_url_status_in_file(input_file, url, status)
+                fail_reason = f"{type(e).__name__}: {e}"
+                logger.error(f"Unexpected error processing {url}: {fail_reason}")
+                self._update_url_status_in_file(input_file, url, f"failed: {fail_reason}")
             # Avoid rate limiting
             time.sleep(2)
+        # Log summary
+        num_total = len(urls)
+        num_success = sum(1 for line in open(input_file) if '# json-complete' in line)
+        num_failed = sum(1 for line in open(input_file) if '# failed' in line)
+        logger.info(f"SUMMARY: Processed {num_total} URLs | Success: {num_success} | Failed: {num_failed}")
 
     def _update_url_status_in_file(self, input_file, url, status):
         """
         Update the status comment for a URL in the input file.
+        If upgrading from json-complete to json-complete, airtable-complete, do not downgrade.
         """
         try:
             with open(input_file, 'r') as f:
@@ -185,9 +200,24 @@ class BookAwardsAgent:
                 # Remove any trailing status comment for comparison
                 line_url = stripped.split('#')[0].strip()
                 if line_url == url:
-                    # Remove any existing status comment
-                    base = line_url
-                    updated_lines.append(f"{base}  # {status}\n")
+                    # Check existing status
+                    current_status = None
+                    if '#' in stripped:
+                        current_status = stripped.split('#', 1)[1].strip()
+                    # If setting to both, always update
+                    if status == 'json-complete, airtable-complete':
+                        base = line_url
+                        updated_lines.append(f"{base}  # json-complete, airtable-complete\n")
+                    # If setting to json-complete, only update if not already both
+                    elif status == 'json-complete':
+                        if current_status == 'json-complete, airtable-complete':
+                            updated_lines.append(line)
+                        else:
+                            base = line_url
+                            updated_lines.append(f"{base}  # json-complete\n")
+                    else:
+                        base = line_url
+                        updated_lines.append(f"{base}  # {status}\n")
                 else:
                     updated_lines.append(line)
             with open(input_file, 'w') as f:
@@ -213,6 +243,7 @@ class BookAwardsAgent:
         
         # Read data from file
         try:
+            logger.info(f"Trying to open file at: {input_file}")
             with open(input_file, 'r') as f:
                 awards_data = json.load(f)
                 
@@ -241,9 +272,10 @@ class BookAwardsAgent:
         import json
         
         try:
-            with open("book_awards_data.json", 'w') as f:
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            data_file = os.path.join(project_root, 'book_awards_data.json')
+            with open(data_file, 'w') as f:
                 json.dump(awards_data, f, indent=2)
-                
         except Exception as e:
             logger.error(f"Error saving progress: {e}")
 
@@ -260,6 +292,13 @@ def main():
     
     args = parser.parse_args()
     
+    # Set input_template.txt as default input file if not provided and not update-only
+    input_file = args.input_file
+    if not input_file and not args.update_only:
+        # Path relative to backend/python/src
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        input_file = os.path.join(project_root, "input_template.txt")
+    
     # Initialize the agent
     agent = BookAwardsAgent(
         airtable_api_key=args.airtable_api_key,
@@ -271,7 +310,7 @@ def main():
     agent.run(
         search_only=args.search_only,
         update_only=args.update_only,
-        input_file=args.input_file
+        input_file=input_file
     )
 
 if __name__ == "__main__":

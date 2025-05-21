@@ -24,16 +24,18 @@ class DataExtractor:
     """Class to handle extraction of book award data from websites."""
     
     def __init__(self):
-        """Initialize the DataExtractor with default headers."""
+        """Initialize the DataExtractor with default headers and session."""
+        self.session = requests.Session()
         self.headers = {
-            'User-Agent': USER_AGENT,
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Referer': 'https://www.google.com/',
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
         }
     
-    def extract_award_data(self, url: str, title: str = None) -> Dict[str, Any]:
+    def extract_award_data(self, url: str, title: str = None) -> Optional[Dict[str, Any]]:
         """
         Extract all available book award data from a website.
         
@@ -42,7 +44,7 @@ class DataExtractor:
             title: Optional title from search results
             
         Returns:
-            Dictionary containing extracted award data
+            Dictionary containing extracted award data, or None if failed
         """
         logger.info(f"Extracting data from: {url}")
         
@@ -60,8 +62,8 @@ class DataExtractor:
             # Get the main page content
             soup = self._get_page_content(url)
             if not soup:
-                logger.error(f"Failed to retrieve content from {url}")
-                return award_data
+                logger.error(f"Failed to retrieve content from {url} after retries. Marking as failed.")
+                return None
             
             # Extract data from the main page
             award_data = self._extract_main_page_data(soup, url, award_data)
@@ -72,12 +74,81 @@ class DataExtractor:
             return award_data
             
         except Exception as e:
-            logger.error(f"Error extracting data from {url}: {e}")
-            return {field: "" for field in AWARD_FIELDS}
+            logger.error(f"Error extracting data from {url}: {type(e).__name__}: {e}")
+            return None
+
+    def extract_award_data_with_reason(self, url: str, title: str = None):
+        """
+        Extract award data, returning (data, fail_reason).
+        On failure, fail_reason is a short string (e.g., '403 Forbidden', 'DNS error').
+        On success, fail_reason is None.
+        """
+        try:
+            result, reason = self._extract_award_data_with_reason_internal(url, title)
+            return result, reason
+        except Exception as e:
+            return None, f"{type(e).__name__}: {e}"
+
+    def _extract_award_data_with_reason_internal(self, url: str, title: str = None):
+        fail_reason = None
+        try:
+            award_data = {field: "" for field in AWARD_FIELDS}
+            award_data["Award Website"] = url
+            if title:
+                award_data["Award Name"] = self._clean_award_name(title)
+            soup, fail_reason = self._get_page_content_with_reason(url)
+            if not soup:
+                return None, fail_reason or "unknown error"
+            award_data = self._extract_main_page_data(soup, url, award_data)
+            award_data = self._extract_related_pages_data(soup, url, award_data)
+            return award_data, None
+        except Exception as e:
+            return None, f"{type(e).__name__}: {e}"
+
+    def _get_page_content_with_reason(self, url: str):
+        """
+        Like _get_page_content, but returns (soup, fail_reason)
+        """
+        import socket
+        from requests.exceptions import HTTPError, ConnectionError
+        from urllib3.exceptions import NameResolutionError
+        max_attempts = 4
+        base_delay = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                if not url.startswith(('http://', 'https://')):
+                    url = f'https://{url}'
+                response = self.session.get(url, headers=self.headers, timeout=30)
+                response.raise_for_status()
+                return BeautifulSoup(response.text, 'html.parser'), None
+            except HTTPError as e:
+                status = getattr(e.response, 'status_code', None)
+                if status == 403:
+                    return None, "403 Forbidden"
+                if status:
+                    fail_reason = f"HTTP {status}"
+                else:
+                    fail_reason = "HTTP error"
+                if attempt == max_attempts:
+                    return None, fail_reason
+                time.sleep(base_delay * attempt)
+            except NameResolutionError as e:
+                return None, "DNS error"
+            except socket.gaierror as e:
+                return None, "DNS error"
+            except ConnectionError as e:
+                if attempt == max_attempts:
+                    return None, "Connection error"
+                time.sleep(base_delay * attempt)
+            except Exception as e:
+                if attempt == max_attempts:
+                    return None, f"{type(e).__name__}: {e}"
+                time.sleep(base_delay * attempt)
+        return None, "unknown error"
     
     def _get_page_content(self, url: str) -> Optional[BeautifulSoup]:
         """
-        Get the HTML content of a page and parse it with BeautifulSoup.
+        Get the HTML content of a page and parse it with BeautifulSoup, with retries and exponential backoff.
         
         Args:
             url: URL to retrieve
@@ -85,17 +156,43 @@ class DataExtractor:
         Returns:
             BeautifulSoup object or None if retrieval fails
         """
-        try:
-            # Add https:// if no scheme is present
-            if not url.startswith(('http://', 'https://')):
-                url = f'https://{url}'
-                
-            response = requests.get(url, headers=self.headers, timeout=30)
-            response.raise_for_status()
-            return BeautifulSoup(response.text, 'html.parser')
-        except Exception as e:
-            logger.error(f"Error retrieving {url}: {e}")
-            return None
+        max_attempts = 4
+        base_delay = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                if not url.startswith(('http://', 'https://')):
+                    url = f'https://{url}'
+                response = self.session.get(url, headers=self.headers, timeout=30)
+                response.raise_for_status()
+                return BeautifulSoup(response.text, 'html.parser')
+            except HTTPError as e:
+                status = getattr(e.response, 'status_code', None)
+                logger.error(f"Attempt {attempt} - HTTP error retrieving {url}: {type(e).__name__}: {e} (status: {status})")
+                if status == 403:
+                    logger.error(f"403 Forbidden for {url}. This site may block bots or require advanced scraping (proxy, Selenium, or manual intervention). Consider checking in a browser or using a proxy.")
+                    return None
+                if attempt == max_attempts:
+                    logger.error(f"Failed to retrieve {url} after {max_attempts} attempts.")
+                    return None
+                time.sleep(base_delay * attempt)
+            except NameResolutionError as e:
+                logger.error(f"DNS error (NameResolutionError) for {url}: {e}. The domain may not exist or is unreachable. Skipping further retries.")
+                return None
+            except socket.gaierror as e:
+                logger.error(f"DNS error (gaierror) for {url}: {e}. The domain may not exist or is unreachable. Skipping further retries.")
+                return None
+            except ConnectionError as e:
+                logger.error(f"Attempt {attempt} - Connection error retrieving {url}: {type(e).__name__}: {e}. This may be due to bot-blocking or server issues.")
+                if attempt == max_attempts:
+                    logger.error(f"Failed to retrieve {url} after {max_attempts} attempts.")
+                    return None
+                time.sleep(base_delay * attempt)
+            except Exception as e:
+                logger.error(f"Attempt {attempt} - Unexpected error retrieving {url}: {type(e).__name__}: {e}")
+                if attempt == max_attempts:
+                    logger.error(f"Failed to retrieve {url} after {max_attempts} attempts.")
+                    return None
+                time.sleep(base_delay * attempt)
     
     def _extract_main_page_data(self, soup: BeautifulSoup, url: str, award_data: Dict[str, Any]) -> Dict[str, Any]:
         """

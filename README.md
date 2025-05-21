@@ -47,6 +47,8 @@ A comprehensive tool for discovering, tracking, and managing book awards. The ap
     - [Prizes \& Recognition](#prizes--recognition)
     - [Contact Information](#contact-information)
     - [Technical Metadata](#technical-metadata)
+  - [Airtable Schema](#airtable-schema)
+
   - [Testing and Validation](#testing-and-validation)
   - [Customization](#customization)
   - [Troubleshooting](#troubleshooting)
@@ -135,9 +137,9 @@ AIRTABLE_TABLE_NAME=Book Awards
 The Python backend supports two types of input files via the `--input-file` argument:
 
 #### 1. URL List (Plain Text)
-- **Use with:** Standard processing (`python -m src.main --input-file backend/input_template.txt`)
+- **Use with:** Standard processing (`python -m src.main --input-file input_template.txt`)
 - **Format:** Each line contains a single award URL. Blank lines and lines starting with `#` are ignored.
-- **Template:** See [`backend/input_template.txt`](backend/input_template.txt)
+- **Template:** See [`input_template.txt`](input_template.txt)
 - **Status Tracking:**
   - Each URL line ends with a status comment: `# pending`, `# completed`, or `# failed`.
   - The workflow automatically updates the status after each attempt:
@@ -148,7 +150,7 @@ The Python backend supports two types of input files via the `--input-file` argu
 - **Usage Example:**
   ```sh
   # From the backend/python directory:
-  python -m src.main --input-file ../input_template.txt
+  python -m src.main --input-file input_template.txt
   ```
 - **Example Entry:**
   ```
@@ -156,7 +158,7 @@ The Python backend supports two types of input files via the `--input-file` argu
   ```
 
 #### 2. Award Data (JSON)
-- **Use with:** Update-only mode (`python -m src.main --update-only --input-file ../book_awards_data.json`)
+- **Use with:** Update-only mode (`python -m src.main --update-only --input-file book_awards_data.json`)
 - **Format:** A JSON file containing a list of award data dictionaries. Each dictionary should match the expected Airtable schema.
 - **Usage Example:**
   ```sh
@@ -199,7 +201,7 @@ The Python backend supports two types of input files via the `--input-file` argu
   python -m src.main --update-only --input-file ../book_awards_data.json
   ```
 
-See the template in `backend/input_template.txt` for the plain text format.
+See the template in `input_template.txt` for the plain text format.
 
 The Python backend provides the core functionality for searching and processing book awards:
 
@@ -465,6 +467,52 @@ For production use, consider:
 4. Using environment variables for sensitive data
 
 ## Data Model
+
+## Airtable Schema
+
+Below is the recommended Airtable schema for the Book Award table. Use these field types and options when creating your Airtable base for best compatibility with the Book Awards Agent.
+
+| Field Name                   | Field Type         | Suggested Options / Description                                  |
+|------------------------------|--------------------|------------------------------------------------------------------|
+| Award Name                   | Single line text   |                                                                  |
+| Category                     | Single select      | e.g., Fiction, Non-fiction, Poetry, Children’s, etc.             |
+| Entry Deadline               | Date               |                                                                  |
+| Eligibility Criteria         | Long text          |                                                                  |
+| Application Procedures       | Long text          |                                                                  |
+| Award Website                | URL                |                                                                  |
+| Prize Amount                 | Single line text   | e.g., "$1000", "€500"                                            |
+| Application Fee              | Single line text   | e.g., "$75", "€50"                                               |
+| Award Status                 | Single select      | Open, Closed, Upcoming                                           |
+| Award Logo                   | Attachment         | Image upload                                                     |
+| Awarding Organization        | Single line text   |                                                                  |
+| Contact Person               | Single line text   |                                                                  |
+| Contact Email                | Email              |                                                                  |
+| Contact Phone                | Phone number       |                                                                  |
+| Physical Address             | Long text          |                                                                  |
+| Past Winners URL             | URL                |                                                                  |
+| Extra Benefits               | Long text          |                                                                  |
+| In-Person Celebration        | Checkbox           |                                                                  |
+| Number of Categories         | Number             | Integer                                                          |
+| Geographic Restrictions      | Single line text   |                                                                  |
+| Alli Rating                  | Number             | Integer (1–5 or as appropriate)                                  |
+| Accepted Formats             | Multiple select    | e.g., Print, eBook, Audiobook                                    |
+| ISBN Required                | Checkbox           |                                                                  |
+| Accepts Series               | Checkbox           |                                                                  |
+| Accepts Anthologies          | Checkbox           |                                                                  |
+| Accepts Debut Authors        | Checkbox           |                                                                  |
+| Evaluates Covers             | Checkbox           |                                                                  |
+| Evaluates Illustrations      | Checkbox           |                                                                  |
+| Evaluates Interior Design    | Checkbox           |                                                                  |
+| Secondary Website            | URL                |                                                                  |
+| Judging Criteria             | Long text          |                                                                  |
+| Listed in Lead Magnet        | Checkbox           |                                                                  |
+| Described in Drip Campaign   | Checkbox           |                                                                  |
+
+**Tips:**
+- For select fields, define the allowed options in Airtable.
+- For checkboxes, use them for all Yes/No type fields.
+- Attachments are best for logos.
+
 
 > **Note:** If any data cannot be written to Airtable due to permissions or schema mismatches, the failed request (and the SQL schema for the attempted fields) will be logged in `failed_airtable_requests.sql` in the project root. See [Troubleshooting](#troubleshooting) for details, including how to re-run or manipulate these statements in SQL.
 

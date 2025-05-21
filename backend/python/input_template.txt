@@ -1,0 +1,119 @@
+# Book Awards Agent Input Template
+# One URL per line. Blank lines and lines starting with # are ignored.
+# Status: completed, failed, pending, etc.
+
+https://www.bookerprizes.com/  # json-complete, airtable-complete
+https://www.pulitzer.org/prize-winners-by-category/219  # json-complete, airtable-complete
+https://www.nationalbook.org/awards/  # json-complete, airtable-complete
+https://www.hugos.org/  # failed: Connection error
+https://www.edgarawards.com/  # json-complete, airtable-complete
+https://www.caldecottmedal.org/  # failed: Connection error
+https://www.nebulaawards.com/  # json-complete, airtable-complete
+https://www.corettascottkingaward.com/  # failed: Connection error
+https://www.newberyawards.com/  # json-complete, airtable-complete
+https://www.manasiapacificprize.org/  # failed: Connection error
+
+https://www.costa.co.uk/behind-the-beans/costa-book-awards/  # failed: ReadTimeout: HTTPSConnectionPool(host='www.costa.co.uk', port=443): Read timed out. (read timeout=30)
+https://www.commonwealthwriters.org/  # failed: Connection error
+https://www.ribena.co.uk/childrens-book-award  # failed: HTTP 404
+https://www.womenprizeforfiction.co.uk/  # failed: Connection error
+https://www.ala.org/alsc/awardsgrants/bookmedia/caldecottmedal/caldecottmedal  # json-complete, airtable-complete
+
+https://www.goodreads.com/choiceawards/best-books-2024  # json-complete, airtable-complete
+https://www.rathbonesfolioprize.com/  # json-complete, airtable-complete
+https://www.dylanthomasprize.com/  # failed: 403 Forbidden
+https://www.scottishbooktrust.com/book-awards  # failed: HTTP 404
+https://www.aurorawards.ca/  # failed: Connection error
+https://www.ala.org/yalsa/booklistsawards/bookawards  # json-complete, airtable-complete
+https://www.nationalbookcriticscircle.org/awards/  # failed: Connection error
+https://www.cilip.org.uk/page/cilippkgoldmedal  # failed: HTTP 404
+https://www.ala.org/awardsgrants/awards/browse/bpma  # failed: HTTP 404
+https://www.michaelprintzaward.com/  # failed: Connection error
+https://www.bramstokerawards.com/  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/geiselaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/batchelderaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/sibertmedal  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/belpreaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/odysseyaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/stonewallbookaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/printzaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/schneiderfamilybookaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/alexawards  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/morrisaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/odysseyaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/youthmediaawards  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/printzaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/stonewallbookaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/batchelderaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/belpreaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/geiselaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/sibertmedal  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/newberyaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/caldecottmedal  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/odysseyaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/schneiderfamilybookaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/alexawards  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/morrisaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/youthmediaawards  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/printzaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/stonewallbookaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/batchelderaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/belpreaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/geiselaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/sibertmedal  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/newberyaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/caldecottmedal  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/odysseyaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/schneiderfamilybookaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/alexawards  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/morrisaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/youthmediaawards  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/printzaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/stonewallbookaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/batchelderaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/belpreaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/geiselaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/sibertmedal  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/newberyaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/caldecottmedal  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/odysseyaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/schneiderfamilybookaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/alexawards  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/morrisaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/youthmediaawards  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/printzaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/stonewallbookaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/batchelderaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/belpreaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/geiselaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/sibertmedal  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/newberyaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/caldecottmedal  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/odysseyaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/schneiderfamilybookaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/alexawards  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/morrisaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/youthmediaawards  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/printzaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/stonewallbookaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/batchelderaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/belpreaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/geiselaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/sibertmedal  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/newberyaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/caldecottmedal  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/odysseyaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/schneiderfamilybookaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/alexawards  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/morrisaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/youthmediaawards  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/printzaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/stonewallbookaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/batchelderaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/belpreaward  # failed: HTTP 404
+https://www.ala.org/alsc/awardsgrants/bookmedia/geiselaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/sibertmedal  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/newberyaward  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/caldecottmedal  # completed
+https://www.ala.org/alsc/awardsgrants/bookmedia/odysseyaward  # json-complete, airtable-complete
+https://www.ala.org/alsc/awardsgrants/bookmedia/schneiderfamilybookaward  # completed

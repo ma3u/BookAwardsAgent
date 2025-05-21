@@ -9,7 +9,7 @@ import requests
 import logging
 from typing import Dict, Any, List, Optional
 import json
-
+import urllib.parse
 from .config import AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME
 
 # Configure logging
@@ -107,7 +107,70 @@ class AirtableUpdater:
         
         self.base_url = f'https://api.airtable.com/v0/{self.base_id}/{self.table_name}'
         self.existing_records = {}  # Cache for existing records
-    
+        self.select_options_cache = {}  # Ensure select_options_cache is always available
+
+    def _prepare_fields(self, award_data: Dict[str, Any]) -> Dict[str, Any]:
+        # Only include fields that exist in Airtable schema (AWARD_FIELDS)
+        from .config import AWARD_FIELDS
+        boolean_fields = [
+            "ISBN Required", "Accepts Series", "Accepts Anthologies",
+            "Accepts Debut Authors", "Evaluates Covers", "Evaluates Illustrations",
+            "Evaluates Interior Design", "In-Person Celebration"
+        ]
+        max_text_length = 10000  # Defensive limit for text fields
+        fields = {}
+        for key, value in award_data.items():
+            if key not in AWARD_FIELDS:
+                continue
+            # Skip empty values
+            if value is None or (isinstance(value, str) and value.strip() == ""):
+                continue
+            # Convert boolean fields
+            if key in boolean_fields:
+                # Special handling for In-Person Celebration: always "Yes"/"No" string
+                if key == "In-Person Celebration":
+                    if isinstance(value, bool):
+                        fields[key] = "Yes" if value else "No"
+                    elif isinstance(value, str):
+                        fields[key] = "Yes" if value.strip().lower() in ["yes", "true", "1"] else "No"
+                    else:
+                        fields[key] = "No"
+                else:
+                    fields[key] = str(value).strip().lower() in ["yes", "true", "1"]
+            # Validate select fields
+            elif key in self.SELECT_FIELDS:
+                allowed_options = self._get_select_options(key)
+                if value in allowed_options:
+                    fields[key] = value
+                elif allowed_options:
+                    fields[key] = allowed_options[0]
+                else:
+                    continue
+            # Format numeric fields
+            elif key in self.NUMERIC_FIELDS:
+                import re
+                try:
+                    numeric = float(re.sub(r'[^\d.]', '', str(value)))
+                    fields[key] = numeric
+                except Exception:
+                    continue
+            # Special handling for Number of Categories: try to cast to int, else skip
+            elif key == "Number of Categories":
+                import re
+                try:
+                    # Remove non-digit characters, allow numbers like "80", "2025", etc.
+                    num_str = re.sub(r'[^\d]', '', str(value))
+                    if num_str:
+                        fields[key] = int(num_str)
+                except Exception:
+                    continue
+            # Truncate long text fields
+            elif isinstance(value, str) and len(value) > max_text_length:
+                fields[key] = value[:max_text_length]
+            else:
+                fields[key] = value
+        return fields
+
     def update_airtable(self, award_data: Dict[str, Any]) -> bool:
         """
         Update Airtable with the provided award data.
@@ -214,18 +277,57 @@ class AirtableUpdater:
             logger.error(f"Error loading existing records: {e}")
     
     def _create_record(self, award_data: Dict[str, Any]) -> bool:
-        """
-        Create a new record in Airtable.
-        """
         fields = self._prepare_fields(award_data)
         try:
             url = self.base_url
             response = requests.post(url, headers=self.headers, json={'fields': fields})
             response.raise_for_status()
             return True
-        except Exception as e:
-            logger.error(f"Error creating record: {e}")
+        except requests.exceptions.HTTPError as e:
+            error_detail = None
+            try:
+                error_detail = response.json()
+            except Exception:
+                pass
+            logger.error(f"Error creating record: {e}, data sent: {fields}, airtable_response: {error_detail}")
             return False
+        except Exception as e:
+            logger.error(f"Error creating record: {e}, data sent: {fields}")
+            return False
+
+    def _update_record(self, record_id: str, award_data: Dict[str, Any]) -> bool:
+        """
+        Update an existing Airtable record by ID.
+        Args:
+            record_id: The Airtable record ID to update
+            award_data: Dictionary of award data to update
+        Returns:
+            True if update succeeded, False otherwise
+        """
+        fields = self._prepare_fields(award_data)
+        try:
+            url = f"{self.base_url}/{record_id}"
+            response = requests.patch(url, headers=self.headers, json={'fields': fields})
+            response.raise_for_status()
+            return True
+        except requests.exceptions.HTTPError as e:
+            error_detail = None
+            try:
+                error_detail = response.json()
+            except Exception:
+                pass
+            logger.error(f"Error updating record: {e}, record_id: {record_id}, data sent: {fields}, airtable_response: {error_detail}")
+            return False
+        except Exception as e:
+            logger.error(f"Error updating record: {e}, record_id: {record_id}, data sent: {fields}")
+            return False
+
+    def _escape_formula_value(self, value: str) -> str:
+        # Airtable formulas use double quotes for string literals, and double quotes inside must be doubled
+        # Also escape ampersands and other special characters if needed
+        if not isinstance(value, str):
+            value = str(value)
+        return '"' + value.replace('"', '""') + '"'
 
     def _find_existing_record(self, award_name: str, award_website: str) -> Optional[str]:
         """
@@ -234,7 +336,7 @@ class AirtableUpdater:
         Args:
             award_name: Name of the award
             award_website: Website of the award
-            
+        
         Returns:
             Record ID if found, None otherwise
         """
@@ -244,79 +346,21 @@ class AirtableUpdater:
                 return self.existing_records[award_name.lower()]
             if award_website.lower() in self.existing_records:
                 return self.existing_records[award_website.lower()]
-                
         # If not in cache, query Airtable
         try:
-            # Try to find by name
-            formula = f'LOWER({{"Award Name"}}) = "{award_name.lower().replace("'", "''")}"'
-            url = f"{self.base_url}?filterByFormula={formula}"
+            # Use robust escaping for formula value, then URL-encode
+            safe_name = self._escape_formula_value(award_name.lower())
+            formula = f'LOWER({{Award Name}}) = {safe_name}'
+            encoded_formula = urllib.parse.quote(formula, safe='')
+            url = f"{self.base_url}?filterByFormula={encoded_formula}"
             response = requests.get(url, headers=self.headers)
             response.raise_for_status()
-            
             records = response.json().get('records', [])
             if records:
                 return records[0]['id']
         except Exception as e:
             logger.error(f"Error finding existing record: {e}")
         return None
-
-def _update_record(self, record_id: str, award_data: Dict[str, Any]) -> bool:
-    """
-    Update an existing record in Airtable.
-    """
-    fields = self._prepare_fields(award_data)
-    try:
-        url = f"{self.base_url}/{record_id}"
-        response = requests.patch(url, headers=self.headers, json={'fields': fields})
-        response.raise_for_status()
-        return True
-    except Exception as e:
-        logger.error(f"Error updating record {record_id}: {e}")
-        return False
-
-def _prepare_fields(self, award_data: Dict[str, Any]) -> Dict[str, Any]:
-    # Convert Yes/No string values to boolean
-    boolean_fields = [
-        "ISBN Required", "Accepts Series", "Accepts Anthologies",
-        "Accepts Debut Authors", "Evaluates Covers", "Evaluates Illustrations",
-        "Evaluates Interior Design", "In-Person Celebration"
-    ]
-    fields = {}
-    for key, value in award_data.items():
-        # Skip empty values
-        if not value:
-            continue
-        # Convert boolean fields
-        if key in boolean_fields:
-            fields[key] = value.lower() == "yes"
-        # Validate select fields
-        elif key in self.SELECT_FIELDS:
-            allowed_options = self._get_select_options(key)
-            if value in allowed_options:
-                fields[key] = value
-            elif allowed_options:
-                # Use first allowed option as fallback
-                fields[key] = allowed_options[0]
-            else:
-                continue  # Skip if no allowed options
-        # Format numeric fields
-        elif key in self.NUMERIC_FIELDS:
-            import re
-            try:
-                numeric = float(re.sub(r'[^\d.]', '', str(value)))
-                fields[key] = numeric
-            except Exception:
-                fields[key] = None
-        # End of main logic for _prepare_fields
-        return fields
-
-    def _sql_quote(self, value):
-        if value is None:
-            return 'NULL'
-        if isinstance(value, (int, float)):
-            return str(value)
-        # Escape single quotes for SQL
-        return "'" + str(value).replace("'", "''") + "'"
 
     def _calculate_completeness(self, award_data: Dict[str, Any]) -> str:
         """
